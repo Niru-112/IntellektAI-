@@ -1,26 +1,19 @@
-# intellektai_pdf_mcq.py
 import streamlit as st
 import fitz
 import json
 import re
+import os
 from huggingface_hub import InferenceClient
 
 # ========================
 # CONFIGURATION
 # ========================
-
-# Load Hugging Face token from Streamlit secrets
-HF_TOKEN = st.secrets["HF_TOKEN"]
-
-# Initialize Hugging Face InferenceClient
-client = InferenceClient(api_key=HF_TOKEN, provider="fireworks-ai")
-
 st.set_page_config(page_title="🧠 IntellektAI | PDF → MCQ Generator", layout="wide")
 st.title("🧠 IntellektAI: AI-Powered PDF → MCQ Generator")
 
 st.markdown("""
 Welcome to **IntellektAI**, an AI-driven assistant that turns your study PDFs into **exam-ready MCQs** 📚  
-Built with **Streamlit** + **Hugging Face Llama 3.1 8B** (no local model installation required).  
+Built with **Streamlit** + **Hugging Face Fireworks Llama-3.1 8B Instruct** (no local model installation required).  
 ---
 """)
 
@@ -35,37 +28,54 @@ st.sidebar.header("⚙️ Settings")
 num_mcqs_per_chunk = st.sidebar.number_input("MCQs per chunk", 1, 20, 5)
 chunk_size = st.sidebar.number_input("Chunk size (chars)", 500, 4000, 2000)
 
+# --- Initialize Hugging Face Fireworks Llama client ---
+HF_TOKEN = st.secrets["HF_TOKEN"]  # Add this to Streamlit secrets
+client = InferenceClient(provider="fireworks-ai", api_key=HF_TOKEN)
+
 # ========================
 # Helper Functions
 # ========================
-
-def generate_mcqs(text, num_mcqs):
-    """Send text to Hugging Face Llama 3.1 and parse MCQs."""
-    system_prompt = (
-        "You are an educational assistant. Generate multiple-choice questions (MCQs) "
-        "from the given text and output only a valid JSON array of objects. "
-        "Each object must have: 'question', 'options' (list of 4 strings), 'correct_option' (0-based index)."
-    )
-
-    prompt = f"""
-Generate exactly {num_mcqs} MCQs from the following text:
-{text}
-Return JSON only (no explanations).
-"""
-
+def hf_generate_mcqs(text, num_mcqs):
+    """Generate MCQs using Llama-3.1 8B Instruct via Hugging Face Fireworks."""
     try:
-        completion = client.chat.completions.create(
+        # Define the system message to enforce structured JSON output
+        system_message = (
+            "You are an expert educational assistant. Generate exactly "
+            f"{num_mcqs} multiple-choice questions (MCQs) from the provided text. "
+            "You MUST return a valid JSON array of objects with the keys: 'question', 'options' (array of 4 strings), and 'correct_option' (0-based index). "
+            "Return JSON only, no explanations, intro, or markdown fences."
+        )
+
+        user_prompt = f"""
+        Text:
+        {text}
+
+        Generate {num_mcqs} MCQs based on the text above.
+        """
+        
+        # CORRECTED: Use client.chat_completion() with the standard messages format
+        response = client.chat_completion(
             model="meta-llama/Llama-3.1-8B-Instruct",
             messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ]
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": user_prompt}
+            ],
+            # Pass additional parameters for reliability
+            max_tokens=2048,
+            temperature=0.1,
+            response_format={"type": "json_object"} # Crucial for clean JSON output
         )
-        text_out = completion.choices[0].message["content"]
+        
+        # The response structure follows the OpenAI standard
+        text_out = response.choices[0].message.content or ""
+
+        # Use regex to robustly find the JSON array (still good practice)
         match = re.search(r"\[.*\]", text_out, re.DOTALL)
         json_str = match.group(0) if match else "[]"
         return json.loads(json_str)
+        
     except Exception as e:
+        # Note: If the model itself fails to generate JSON, the load will fail here.
         st.error(f"❌ Hugging Face Llama API error: {e}")
         return []
 
@@ -90,7 +100,6 @@ def split_text_into_chunks(text, size):
 # ========================
 # TABS
 # ========================
-
 tab1, tab2 = st.tabs(["📘 Generate MCQs", "🔍 Search MCQs"])
 
 # --- Tab 1: Generate MCQs ---
@@ -118,7 +127,7 @@ with tab1:
 
                 for idx, chunk in enumerate(chunks, 1):
                     progress.progress(idx / len(chunks))
-                    mcqs = generate_mcqs(chunk, num_mcqs_per_chunk)
+                    mcqs = hf_generate_mcqs(chunk, num_mcqs_per_chunk)
                     all_mcqs.extend(mcqs)
 
                 progress.empty()
@@ -176,7 +185,7 @@ with tab2:
 st.markdown("""
 ---
 👨‍💻 **Developed by Niru Sanathara**  
-🧩 Powered by **Hugging Face Llama 3.1 8B** + **Streamlit**  
+🧩 Powered by **Hugging Face Fireworks Llama-3.1 8B Instruct** + **Streamlit**  
 💡 *Simplifying learning through AI-generated MCQs.*  
 📌 App Name: **IntellektAI**
 """)
