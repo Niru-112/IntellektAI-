@@ -169,14 +169,9 @@ Open in browser: `http://localhost:8501`
 **Niru Sanathara**  
 AI/ML Engineer | Applied Scientist  
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=flat&logo=linkedin&logoColor=white)](https://linkedin.com/in/nirusanathara)
-[![GitHub](https://img.shields.io/badge/GitHub-100000?style=flat&logo=github&logoColor=white)](https://github.com/nirusanathara)
+[![GitHub](https://img.shields.io/badge/GitHub-100000?style=flat&logo=github&logoColor=white)](https://github.com/Niru-112)
 
 ---
 
-## 📄 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
 
 <p align="center"><i>💡 Simplifying learning through AI-generated MCQs.</i></p>
