@@ -30,7 +30,7 @@ chunk_size = st.sidebar.number_input("Chunk size (chars)", 500, 4000, 2000)
 
 # --- Initialize Hugging Face Fireworks Llama client ---
 HF_TOKEN = st.secrets["HF_TOKEN"]  # Add this to Streamlit secrets
-client = InferenceClient(provider="fireworks-ai", api_key=HF_TOKEN)
+client = InferenceClient(provider="sambanova", api_key=HF_TOKEN)
 
 # ========================
 # Helper Functions
