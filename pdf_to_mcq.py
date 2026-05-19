@@ -29,8 +29,8 @@ num_mcqs_per_chunk = st.sidebar.number_input("MCQs per chunk", 1, 20, 5)
 chunk_size = st.sidebar.number_input("Chunk size (chars)", 500, 4000, 2000)
 
 # --- Initialize Hugging Face Fireworks Llama client ---
-HF_TOKEN = st.secrets["HF_TOKEN"]  # Add this to Streamlit secrets
-client = InferenceClient(provider="sambanova", api_key=HF_TOKEN)
+HF_TOKEN = st.secrets["HF_TOKEN"]  
+client = InferenceClient(provider="cerebras", api_key=HF_TOKEN)
 
 # ========================
 # Helper Functions
