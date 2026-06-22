@@ -31,7 +31,7 @@ chunk_size = st.sidebar.number_input("Chunk size (chars)", 500, 4000, 2000)
 
 # --- Initialize Hugging Face Fireworks Llama client ---
 HF_TOKEN = st.secrets["HF_TOKEN"]  
-client = InferenceClient(provider="groq", api_key=HF_TOKEN)
+client = InferenceClient(api_key=HF_TOKEN)
 
 def hf_generate_mcqs(text, num_mcqs):
     system_message = (
@@ -43,8 +43,8 @@ def hf_generate_mcqs(text, num_mcqs):
         "No explanation, no markdown, no code fences."
     )
     try:
-        response = client.chat_completion(
-            model="meta-llama/Llama-3.1-8B-Instruct",  # works on Groq via HF
+        response = client.chat.completions.create(
+            model="meta-llama/Llama-3.1-8B-Instruct:fastest",  
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": f"Text:\n{text}\n\nGenerate {num_mcqs} MCQs."}
