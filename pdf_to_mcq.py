@@ -3,6 +3,7 @@ import fitz
 import json
 import re
 import os
+import requests
 from huggingface_hub import InferenceClient
 
 # ========================
