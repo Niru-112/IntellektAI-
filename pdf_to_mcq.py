@@ -36,46 +36,42 @@ client = InferenceClient(provider="cerebras", api_key=HF_TOKEN)
 # Helper Functions
 # ========================
 def hf_generate_mcqs(text, num_mcqs):
-    """Generate MCQs using Llama-3.1 8B Instruct via Hugging Face Fireworks."""
+    """Generate MCQs using Llama-3.1-8B via Hugging Face Cerebras provider."""
     try:
-        # Define the system message to enforce structured JSON output
         system_message = (
             "You are an expert educational assistant. Generate exactly "
             f"{num_mcqs} multiple-choice questions (MCQs) from the provided text. "
-            "You MUST return a valid JSON array of objects with the keys: 'question', 'options' (array of 4 strings), and 'correct_option' (0-based index). "
-            "Return JSON only, no explanations, intro, or markdown fences."
+            "You MUST return a valid JSON array. Each object must have: "
+            "'question' (string), 'options' (array of exactly 4 strings), "
+            "and 'correct_option' (integer, 0-based index). "
+            "Return ONLY the raw JSON array. No explanation, no markdown, no code fences."
         )
 
-        user_prompt = f"""
-        Text:
-        {text}
+        user_prompt = f"""Text:
+{text}
 
-        Generate {num_mcqs} MCQs based on the text above.
-        """
-        
-        # CORRECTED: Use client.chat_completion() with the standard messages format
+Generate {num_mcqs} MCQs based on the text above. Return only a JSON array."""
+
         response = client.chat_completion(
-            model="meta-llama/Llama-3.1-8B-Instruct",
+            model="llama3.1-8b",       # ✅ Correct Cerebras alias
             messages=[
                 {"role": "system", "content": system_message},
                 {"role": "user", "content": user_prompt}
             ],
-            # Pass additional parameters for reliability
             max_tokens=2048,
             temperature=0.1,
-            response_format={"type": "json_object"} # Crucial for clean JSON output
         )
-        
-        # The response structure follows the OpenAI standard
+
         text_out = response.choices[0].message.content or ""
 
-        # Use regex to robustly find the JSON array (still good practice)
+        # Strip markdown fences if model adds them anyway
+        text_out = re.sub(r"```(?:json)?", "", text_out).strip()
+
         match = re.search(r"\[.*\]", text_out, re.DOTALL)
         json_str = match.group(0) if match else "[]"
         return json.loads(json_str)
-        
+
     except Exception as e:
-        # Note: If the model itself fails to generate JSON, the load will fail here.
         st.error(f"❌ Hugging Face Llama API error: {e}")
         return []
 
