@@ -31,47 +31,33 @@ chunk_size = st.sidebar.number_input("Chunk size (chars)", 500, 4000, 2000)
 
 # --- Initialize Hugging Face Fireworks Llama client ---
 HF_TOKEN = st.secrets["HF_TOKEN"]  
-HF_ROUTER_URL = "https://router.huggingface.co/cerebras/v1/chat/completions"
-HEADERS = {
-    "Authorization": f"Bearer {HF_TOKEN}",
-    "Content-Type": "application/json",
-}
+client = InferenceClient(provider="groq", api_key=HF_TOKEN)
 
 def hf_generate_mcqs(text, num_mcqs):
-    """Generate MCQs using Llama-3.1-8B via HF → Cerebras router."""
     system_message = (
         "You are an expert educational assistant. Generate exactly "
         f"{num_mcqs} multiple-choice questions (MCQs) from the provided text. "
-        "You MUST return a valid JSON array. Each object must have: "
+        "Return ONLY a valid JSON array. Each object must have: "
         "'question' (string), 'options' (array of exactly 4 strings), "
-        "and 'correct_option' (integer, 0-based index). "
-        "Return ONLY the raw JSON array. No explanation, no markdown, no code fences."
+        "'correct_option' (integer, 0-based index). "
+        "No explanation, no markdown, no code fences."
     )
-
-    payload = {
-        "model": "meta-llama/Llama-3.1-8B-Instruct",  # Cerebras model name
-        "messages": [
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": f"Text:\n{text}\n\nGenerate {num_mcqs} MCQs."}
-        ],
-        "max_tokens": 2048,
-        "temperature": 0.1,
-    }
-
     try:
-        response = requests.post(HF_ROUTER_URL, headers=HEADERS, json=payload, timeout=60)
-        response.raise_for_status()
-        text_out = response.json()["choices"][0]["message"]["content"] or ""
-
-        # Strip any accidental markdown fences
+        response = client.chat_completion(
+            model="meta-llama/Llama-3.1-8B-Instruct",  # works on Groq via HF
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": f"Text:\n{text}\n\nGenerate {num_mcqs} MCQs."}
+            ],
+            max_tokens=2048,
+            temperature=0.1,
+        )
+        text_out = response.choices[0].message.content or ""
         text_out = re.sub(r"```(?:json)?", "", text_out).strip()
-
         match = re.search(r"\[.*\]", text_out, re.DOTALL)
-        json_str = match.group(0) if match else "[]"
-        return json.loads(json_str)
-
+        return json.loads(match.group(0) if match else "[]")
     except Exception as e:
-        st.error(f"❌ Hugging Face Llama API error: {e}")
+        st.error(f"❌ API error: {e}")
         return []
 
 def parse_page_range(page_range_str, total_pages):
